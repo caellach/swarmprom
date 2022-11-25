@@ -1,8 +1,9 @@
 #!/bin/sh -e
 
 cat /etc/prometheus/prometheus.yml > /tmp/prometheus.yml
-cat /etc/prometheus/weave-cortex.yml | \
-    sed "s@#password: <token>#@password: '$WEAVE_TOKEN'@g" > /tmp/weave-cortex.yml
+if [ "$WEAVE_TOKEN" != 'none' ]; then
+  cat /etc/prometheus/weave-cortex.yml | sed "s@#password: <token>#@password: '$WEAVE_TOKEN'@g" > /tmp/weave-cortex.yml
+fi
 
 #JOBS=mongo-exporter:9111 redis-exporter:9112
 
@@ -24,22 +25,27 @@ cat >>/tmp/prometheus.yml <<EOF
       ]
 EOF
 
-cat >>/tmp/weave-cortex.yml <<EOF
+if [ "$WEAVE_TOKEN" != 'none' ]; then
+  cat >>/tmp/weave-cortex.yml <<EOF
 
-  - job_name: '${SERVICE}'
-    dns_sd_configs:
-    - names:
-      - 'tasks.${SERVICE}'
-      type: 'A'
-      port: ${PORT}
+    - job_name: '${SERVICE}'
+      dns_sd_configs:
+      - names:
+        - 'tasks.${SERVICE}'
+        type: 'A'
+        port: ${PORT}
 EOF
+fi
 
 done
 
 fi
 
-mv /tmp/prometheus.yml /etc/prometheus/prometheus.yml
-mv /tmp/weave-cortex.yml /etc/prometheus/weave-cortex.yml
+mv /tmp/prometheus.yml /etc/prometheus/prometheus_swarm.yml
+
+if [ "$WEAVE_TOKEN" != 'none' ]; then
+  mv /tmp/weave-cortex.yml /etc/prometheus/weave-cortex.yml
+fi
 
 set -- /bin/prometheus "$@"
 
